@@ -26,7 +26,7 @@ def test_shorten_creates_link():
     assert urls[code] == "https://example.com"
 
 
-def test_shorten_rejects_wrong_input():
+def test_shorten_wrong_input():
     response = client.post("/shorten", json={"link": "https://example.com"})
     assert response.status_code == 422
     assert urls == {}
