@@ -7,4 +7,5 @@ packaging==26.3
 pluggy==1.6.0
 pygments==2.21.0
 pytest==9.1.1
+ruff==0.16.10
 truststore==0.10.4
