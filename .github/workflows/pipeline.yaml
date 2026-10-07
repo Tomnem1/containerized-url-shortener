@@ -1,0 +1,33 @@
+name: CI pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: copy repo
+        uses: actions/checkout@v7
+
+      - name: set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: install dependencies
+        run: pip install -r ./requirements-dev.txt
+      
+      - name: lint with ruff
+        run: ruff check .
+
+      - name: run tests
+        run: pytest -v
+
+      - name: build docker image
+        run: docker build -t url-shortener .
