@@ -29,8 +29,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-urls: dict[str, str] = {}
-
 ALPHABET = string.ascii_letters + string.digits
 CODE_LENGTH = 6
 
