@@ -1,3 +1,4 @@
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -20,6 +21,18 @@ def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_health_database_unreachable(client, monkeypatch):
+    def broken_connection():
+        raise psycopg.OperationalError("database is down")
+
+    monkeypatch.setattr("app.main.get_connection", broken_connection)
+
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "error", "database": "unreachable"}
 
 
 def test_shorten_creates_link(client):
