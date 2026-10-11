@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 CREATE_TABLE_SQL = """
@@ -47,6 +47,14 @@ class ShortenRequest(BaseModel):
 
 @app.get("/health")
 def health():
+    try:
+        with get_connection() as conn:
+            conn.execute("SELECT 1")
+    except psycopg.OperationalError:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "database": "unreachable"},
+        )
     return {"status": "ok"}
 
 
