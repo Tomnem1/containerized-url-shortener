@@ -1,13 +1,33 @@
+import os
 import secrets
 import string
+from contextlib import asynccontextmanager
 
+import psycopg
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-app = FastAPI()
+CREATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS urls (
+    code TEXT PRIMARY KEY,
+    url TEXT NOT NULL
+)
+"""
 
-urls: dict[str, str] = {}
+
+def get_connection() -> psycopg.Connection:
+    return psycopg.connect(os.environ["DATABASE_URL"])
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    with get_connection() as conn:
+        conn.execute(CREATE_TABLE_SQL)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 ALPHABET = string.ascii_letters + string.digits
 CODE_LENGTH = 6
@@ -32,16 +52,19 @@ def health():
 
 @app.post("/shorten")
 def shorten(body: ShortenRequest, request: Request):
-    code = generate_code()
-    while code in urls:
+    with get_connection() as conn:
         code = generate_code()
-    urls[code] = body.url
+        while conn.execute("SELECT 1 FROM urls WHERE code = %s", (code,)).fetchone():
+            code = generate_code()
+        conn.execute("INSERT INTO urls (code, url) VALUES (%s, %s)", (code, body.url))
     return {"short_url": f"{request.base_url}{code}"}
 
 
 @app.get("/{code}")
 def redirect(code: str):
-    url = urls.get(code)
-    if url is None:
+    with get_connection() as conn:
+        row = conn.execute("SELECT url FROM urls WHERE code = %s", (code,)).fetchone()
+    if row is None:
         raise HTTPException(status_code=404, detail="Code not found")
+    url = row[0]
     return RedirectResponse(url, status_code=307)
